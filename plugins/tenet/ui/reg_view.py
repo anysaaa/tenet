@@ -92,11 +92,17 @@ class RegisterArea(QtWidgets.QAbstractScrollArea):
         self.model = model
 
         font = QtGui.QFont("Courier", pointSize=normalize_font(9))
-        font.setStyleHint(QtGui.QFont.TypeWriter)
+        try:
+            font.setStyleHint(QtGui.QFont.StyleHint.TypeWriter)
+        except AttributeError:
+            font.setStyleHint(QtGui.QFont.TypeWriter)
         self.setFont(font)
 
         fm = QtGui.QFontMetricsF(font)
-        self._char_width = fm.width('9')
+        try:
+            self._char_width = fm.horizontalAdvance('9')
+        except AttributeError:
+            self._char_width = fm.width('9')
         self._char_height = fm.height()
 
         # default to fit roughly 50 printable characters
@@ -109,7 +115,7 @@ class RegisterArea(QtWidgets.QAbstractScrollArea):
 
         self.setFocusPolicy(QtCore.Qt.StrongFocus)
         self.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
-        self.setMinimumWidth(self._reg_pos[0] + self._default_width)
+        self.setMinimumWidth(int(self._reg_pos[0] + self._default_width))
         self.setMouseTracking(True)
 
         self._init_ctx_menu()
@@ -118,8 +124,8 @@ class RegisterArea(QtWidgets.QAbstractScrollArea):
         self.model.registers_changed(self.refresh)
 
     def sizeHint(self):
-        width = self._default_width
-        height = (len(self._reg_fields) + 2) * self._char_height # +2 for line break before IP, and after IP
+        width = int(self._default_width)
+        height = int((len(self._reg_fields) + 2) * self._char_height) # +2 for line break before IP, and after IP
         return QtCore.QSize(width, height)
 
     def _init_ctx_menu(self):
@@ -162,22 +168,22 @@ class RegisterArea(QtWidgets.QAbstractScrollArea):
             if reg_name == self.model.arch.IP:
                 y += self._char_height
 
-            name_rect = QtCore.QRect(0, 0, name_size.width(), name_size.height())
-            name_rect.moveBottomLeft(QtCore.QPoint(name_x, y))
+            name_rect = QtCore.QRect(0, 0, int(name_size.width()), int(name_size.height()))
+            name_rect.moveBottomLeft(QtCore.QPoint(int(name_x), int(y)))
 
             prev_rect = QtCore.QRect(0, 0, arrow_size, arrow_size)
             next_rect = QtCore.QRect(0, 0, arrow_size, arrow_size)
             arrow_rects = [prev_rect, next_rect]
 
-            prev_x = name_x + name_size.width() + self._char_width
+            prev_x = int(name_x + name_size.width() + self._char_width)
             prev_rect.moveCenter(name_rect.center())
             prev_rect.moveLeft(prev_x)
 
-            value_x = prev_x + prev_rect.width() + self._char_width
-            value_rect = QtCore.QRect(0, 0, value_size.width(), value_size.height())
-            value_rect.moveBottomLeft(QtCore.QPoint(value_x, y))
+            value_x = int(prev_x + prev_rect.width() + self._char_width)
+            value_rect = QtCore.QRect(0, 0, int(value_size.width()), int(value_size.height()))
+            value_rect.moveBottomLeft(QtCore.QPoint(value_x, int(y)))
 
-            next_x = value_x + value_size.width() + self._char_width
+            next_x = int(value_x + value_size.width() + self._char_width)
             next_rect.moveCenter(name_rect.center())
             next_rect.moveLeft(next_x)
 
@@ -235,7 +241,7 @@ class RegisterArea(QtWidgets.QAbstractScrollArea):
         # action from the list of visible/active actions
         #
 
-        action = menu.exec_(self.mapToGlobal(position))
+        action = menu.exec(self.mapToGlobal(position))
 
         #
         # handle the user selected action
@@ -274,8 +280,8 @@ class RegisterArea(QtWidgets.QAbstractScrollArea):
         if not self.model.registers:
             return QtCore.QSize(0, 0)
 
-        width = self._reg_pos[0] + self._default_width
-        height = len(self.model.registers) * self._char_height
+        width = int(self._reg_pos[0] + self._default_width)
+        height = int(len(self.model.registers) * self._char_height)
 
         return QtCore.QSize(width, height)
 

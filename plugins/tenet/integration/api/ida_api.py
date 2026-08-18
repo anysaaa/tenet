@@ -13,6 +13,7 @@ import ida_dbg
 import ida_idp
 import ida_pro
 import ida_auto
+import idaapi
 import ida_nalt
 import ida_name
 import ida_xref
@@ -22,6 +23,25 @@ import ida_idaapi
 import ida_diskio
 import ida_kernwin
 import ida_segment
+
+# IDA 9.x moves many inf-structure helpers into the ida_ida module. Keep
+# backward compatibility with older releases that don't expose it.
+try:
+    import ida_ida
+except ImportError:
+    ida_ida = None
+
+# IDA 8.x/9.x moved color tag constants from idaapi to ida_lines. Try the
+# modern module first, but fall back for older IDAPython builds.
+try:
+    import ida_lines
+    COLOR_ON = ida_lines.COLOR_ON
+    COLOR_ADDR = ida_lines.COLOR_ADDR
+    COLOR_ADDR_SIZE = ida_lines.COLOR_ADDR_SIZE
+except (ImportError, AttributeError):
+    COLOR_ON = idaapi.COLOR_ON
+    COLOR_ADDR = idaapi.COLOR_ADDR
+    COLOR_ADDR_SIZE = idaapi.COLOR_ADDR_SIZE
 
 from .api import DisassemblerCoreAPI, DisassemblerContextAPI
 from ...util.qt import *
@@ -198,9 +218,28 @@ class IDAContextAPI(DisassemblerContextAPI):
         pass
 
     def is_64bit(self):
-        inf = ida_idaapi.get_inf_structure()
-        #target_filetype = inf.filetype
-        return inf.is_64bit()
+        # IDA 9.x exposes inf_is_64bit() directly. Fall back to the legacy
+        # inf_t object API for older versions.
+        if ida_ida is not None:
+            try:
+                return ida_ida.inf_is_64bit()
+            except (AttributeError, NameError):
+                pass
+
+        try:
+            inf = ida_idaapi.get_inf_structure()
+            return inf.is_64bit()
+        except (AttributeError, NameError):
+            pass
+
+        # last resort: inspect the compiler config address size
+        try:
+            return ida_idaapi.get_inf_structure().cc.size_l == 8
+        except (AttributeError, NameError):
+            pass
+
+        # ultimate fallback -- assume 32-bit if we cannot determine it
+        return False
 
     def is_call_insn(self, address):
         insn = ida_ua.insn_t()
@@ -455,13 +494,13 @@ def lex_citem_indexes(line):
     while i < line_length:
 
         # does this character mark the start of a new COLOR_* token?
-        if line[i] == idaapi.COLOR_ON:
+        if line[i] == COLOR_ON:
 
             # yes, so move past the COLOR_ON byte
             i += 1
 
             # is this sequence for a COLOR_ADDR?
-            if ord(line[i]) == idaapi.COLOR_ADDR:
+            if ord(line[i]) == COLOR_ADDR:
 
                 # yes, so move past the COLOR_ADDR byte
                 i += 1
@@ -472,8 +511,8 @@ def lex_citem_indexes(line):
                 # in this context, it is actually the index number of a citem
                 #
 
-                citem_index = int(line[i:i+idaapi.COLOR_ADDR_SIZE], 16)
-                i += idaapi.COLOR_ADDR_SIZE
+                citem_index = int(line[i:i+COLOR_ADDR_SIZE], 16)
+                i += COLOR_ADDR_SIZE
 
                 # save the extracted citem index
                 indexes.append(citem_index)

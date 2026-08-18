@@ -24,12 +24,18 @@ class HexView(QtWidgets.QAbstractScrollArea):
         self.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
 
         font = QtGui.QFont("Courier", pointSize=normalize_font(9))
-        font.setStyleHint(QtGui.QFont.TypeWriter)
+        try:
+            font.setStyleHint(QtGui.QFont.StyleHint.TypeWriter)
+        except AttributeError:
+            font.setStyleHint(QtGui.QFont.TypeWriter)
         self.setFont(font)
         self.setMouseTracking(True)
 
         fm = QtGui.QFontMetricsF(font)
-        self._char_width = fm.width('9')
+        try:
+            self._char_width = fm.horizontalAdvance('9')
+        except AttributeError:
+            self._char_width = fm.width('9')
         self._char_height = int(fm.tightBoundingRect('9').height() * 1.75)
         self._char_descent = self._char_height - fm.descent()*0.75
 
@@ -182,22 +188,22 @@ class HexView(QtWidgets.QAbstractScrollArea):
         self._chars_in_line += (self.model.num_bytes_per_line // HEX_TYPE_WIDTH[self.model.hex_format])
 
         # the x position to draw the text address (left side of view)
-        self._pos_addr = self._char_width // 2
+        self._pos_addr = int(self._char_width // 2)
 
         # the width of the column, 2 nibbles (chars) per byte of a pointer
         # -- +1 for padding, (eg, 1/2 char on each side)
-        self._width_addr = (self.model.pointer_size * 2 + 1) * self._char_width
+        self._width_addr = int((self.model.pointer_size * 2 + 1) * self._char_width)
 
         # the x position and width of the hex bytes region (center section of view)
-        self._pos_hex = self._width_addr + self._char_width
-        self._width_hex = self._chars_in_line * self._char_width
+        self._pos_hex = int(self._width_addr + self._char_width)
+        self._width_hex = int(self._chars_in_line * self._char_width)
 
         # the x position and width of the auxillary region (right section of view)
-        self._pos_aux = self._pos_hex + self._width_hex
-        self._width_aux = (self.model.num_bytes_per_line * self._char_width) + self._char_width * 2
+        self._pos_aux = int(self._pos_hex + self._width_hex)
+        self._width_aux = int((self.model.num_bytes_per_line * self._char_width) + self._char_width * 2)
 
         # enforce a minimum view width, to ensure all text stays visible
-        self.setMinimumWidth(self._pos_aux + self._width_aux)
+        self.setMinimumWidth(int(self._pos_aux + self._width_aux))
 
     def full_size(self):
         """
@@ -206,12 +212,12 @@ class HexView(QtWidgets.QAbstractScrollArea):
         if not self.model.data:
             return QtCore.QSize(0, 0)
 
-        width = self._pos_aux + (self.model.num_bytes_per_line * self._char_width)
+        width = int(self._pos_aux + (self.model.num_bytes_per_line * self._char_width))
         height = len(self.model.data) // self.model.num_bytes_per_line
         if len(self.model.data) % self.model.num_bytes_per_line:
             height += 1
 
-        height *= self._char_height
+        height = int(height * self._char_height)
 
         return QtCore.QSize(width, height)
 
@@ -273,11 +279,11 @@ class HexView(QtWidgets.QAbstractScrollArea):
             byte_x = item_index * HEX_TYPE_WIDTH[self.model.hex_format]
 
         # compute the line number (the y-axis) that the point falls within
-        byte_y = position.y() // self._char_height
+        byte_y = int(position.y() // self._char_height)
         #print("- Byte (X, Y)", byte_x, byte_y)
 
         # compute the final byte index from the start address in the window
-        byte_index = (byte_y * self.model.num_bytes_per_line) + byte_x
+        byte_index = int((byte_y * self.model.num_bytes_per_line) + byte_x)
         #print("- Byte Index", byte_index)
 
         return byte_index
@@ -427,7 +433,7 @@ class HexView(QtWidgets.QAbstractScrollArea):
         # show the right click context menu
         #
 
-        action = menu.exec_(self.mapToGlobal(position))
+        action = menu.exec(self.mapToGlobal(position))
         if not action:
             return
 
@@ -694,12 +700,12 @@ class HexView(QtWidgets.QAbstractScrollArea):
         painter.fillRect(event.rect(), self._palette.hex_data_bg)
 
         # paint address area background
-        address_area_rect = QtCore.QRect(0, event.rect().top(), self._width_addr, self.height())
+        address_area_rect = QtCore.QRect(0, event.rect().top(), int(self._width_addr), self.height())
         painter.fillRect(address_area_rect, self._palette.hex_address_bg)
 
         # paint line between address area and hex area
         painter.setPen(self._palette.hex_separator)
-        painter.drawLine(self._width_addr, event.rect().top(), self._width_addr, self.height())
+        painter.drawLine(int(self._width_addr), event.rect().top(), int(self._width_addr), self.height())
 
         # paint line between hex area and auxillary area
         line_pos = self._pos_aux
@@ -735,7 +741,7 @@ class HexView(QtWidgets.QAbstractScrollArea):
         pack_len = self.model.pointer_size
         address_fmt = '%016X' if pack_len == 8 else '%08X'
         address_text = address_fmt % address
-        painter.drawText(self._pos_addr, y, address_text)
+        painter.drawText(int(self._pos_addr), y, address_text)
 
         self._default_color = self._palette.hex_text_fg
         if address < self.model.fade_address:
@@ -775,7 +781,7 @@ class HexView(QtWidgets.QAbstractScrollArea):
                 else:
                     ch = chr(ch)
 
-                painter.drawText(x_pos_aux, y, ch)
+                painter.drawText(int(x_pos_aux), y, ch)
                 x_pos_aux += self._char_width
 
     def _paint_hex_item(self, painter, byte_idx, stop_idx, x, y):
@@ -960,7 +966,7 @@ class HexView(QtWidgets.QAbstractScrollArea):
                 painter.setPen(QtCore.Qt.NoPen)
 
             painter.setBrush(bg_color)
-            painter.drawRect(x_bg, y_bg, width, height)
+            painter.drawRect(int(x_bg), int(y_bg), int(width), int(height))
 
         painter.setPen(fg_color)
 
@@ -968,7 +974,7 @@ class HexView(QtWidgets.QAbstractScrollArea):
         # paint text
         #
 
-        painter.drawText(x, y, text)
+        painter.drawText(int(x), y, text)
 
     def _paint_magic(self, painter, byte_idx, stop_idx, x, y):
         """
@@ -1006,7 +1012,7 @@ class HexView(QtWidgets.QAbstractScrollArea):
 
         # draw the pointer
         pointer_str = ("0x%08X " % value).rjust(num_chars)
-        painter.drawText(x, y, pointer_str)
+        painter.drawText(int(x), y, pointer_str)
         x += num_chars * self._char_width
 
         return (byte_idx + self.model.pointer_size, x, y)

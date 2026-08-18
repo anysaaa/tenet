@@ -5,6 +5,9 @@ import logging
 # TODO: should probably cleanup / document this file a bit better
 #
 
+import os
+import tempfile
+
 import ida_dbg
 import ida_bytes
 import ida_idaapi
@@ -125,6 +128,30 @@ class TenetIDA(TenetCore):
     ACTION_NEXT_EXECUTION  = "tenet:next_execution"
     ACTION_PREV_EXECUTION  = "tenet:prev_execution"
 
+    def _load_icon(self, icon_data):
+        """
+        Load a PNG icon into IDA in a version-agnostic way.
+
+        IDA 9.x removed the `data` keyword argument from load_custom_icon,
+        so we fall back to writing the PNG bytes to a temporary file when
+        necessary.
+        """
+        try:
+            return ida_kernwin.load_custom_icon(data=icon_data)
+        except TypeError:
+            pass
+
+        fd, icon_path = tempfile.mkstemp(suffix=".png")
+        try:
+            with os.fdopen(fd, "wb") as f:
+                f.write(icon_data)
+            return ida_kernwin.load_custom_icon(icon_path)
+        finally:
+            try:
+                os.remove(icon_path)
+            except OSError:
+                pass
+
     def _install_load_trace(self):
 
         # TODO: create a custom IDA icon 
@@ -159,7 +186,7 @@ class TenetIDA(TenetCore):
     def _install_next_execution(self):
 
         icon_data = self.palette.gen_arrow_icon(self.palette.arrow_next, 0)
-        self._icon_id_next_execution = ida_kernwin.load_custom_icon(data=icon_data)
+        self._icon_id_next_execution = self._load_icon(icon_data)
 
         # describe a custom IDA UI action
         action_desc = ida_kernwin.action_desc_t(
@@ -179,7 +206,7 @@ class TenetIDA(TenetCore):
     def _install_prev_execution(self):
 
         icon_data = self.palette.gen_arrow_icon(self.palette.arrow_prev, 180.0)
-        self._icon_id_prev_execution = ida_kernwin.load_custom_icon(data=icon_data)
+        self._icon_id_prev_execution = self._load_icon(icon_data)
 
         # describe a custom IDA UI action
         action_desc = ida_kernwin.action_desc_t(
@@ -322,9 +349,13 @@ class TenetIDA(TenetCore):
         # only attach these context items to popups in disas views
         if view_type == ida_kernwin.BWN_DISASMS:
 
-            # prep for some shady hacks
-            p_qmenu = ctypes.cast(int(popup), ctypes.POINTER(ctypes.c_void_p))[0]
-            qmenu = sip.wrapinstance(int(p_qmenu), QtWidgets.QMenu)
+            # prep for some shady hacks. in IDA 9.x the popup may already be
+            # a PySide6.QMenu object, so use it directly when possible.
+            if isinstance(popup, QtWidgets.QMenu):
+                qmenu = popup
+            else:
+                p_qmenu = ctypes.cast(int(popup), ctypes.POINTER(ctypes.c_void_p))[0]
+                qmenu = wrapinstance(int(p_qmenu), QtWidgets.QMenu)
 
             #
             # inject and organize the Tenet plugin actions

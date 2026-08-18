@@ -894,7 +894,7 @@ class TraceBar(QtWidgets.QWidget):
                 painter.setPen(self.pctx.palette.trace_unmapped)
 
             # paint the current line
-            painter.drawLine(viz_x, wid_y, viz_w, wid_y)
+            painter.drawLine(int(viz_x), wid_y, int(viz_w), wid_y)
 
     def _draw_code_cells(self, painter):
         """
@@ -931,9 +931,9 @@ class TraceBar(QtWidgets.QWidget):
         viz_w, _ = self.viz_size
 
         # compute cell positioning info
-        x = viz_x + self._cell_border * -1
-        w = viz_w + self._cell_border
-        h = self._cell_height
+        x = int(viz_x + self._cell_border * -1)
+        w = int(viz_w + self._cell_border)
+        h = int(self._cell_height)
 
         dctx = disassembler[self.pctx]
 
@@ -952,7 +952,7 @@ class TraceBar(QtWidgets.QWidget):
             else:
                 painter.setBrush(self.pctx.palette.trace_unmapped)
 
-            y = self._idx2pos(idx)
+            y = int(self._idx2pos(idx))
             painter.drawRect(x, y, w, h)
 
     def _draw_highlights(self):
@@ -1008,7 +1008,7 @@ class TraceBar(QtWidgets.QWidget):
                 y = self._idx2pos(idx) + self._cell_border
 
                 # draw cell body
-                painter.drawRect(viz_x, y, viz_w, h)
+                painter.drawRect(int(viz_x), y, int(viz_w), h)
 
     def _draw_highlights_trace(self, painter):
         """
@@ -1033,8 +1033,8 @@ class TraceBar(QtWidgets.QWidget):
                 if not(self.start_idx <= idx < self.end_idx):
                     continue
 
-                y = self._idx2pos(idx)
-                painter.drawLine(viz_x, y, viz_w, y)
+                y = int(self._idx2pos(idx))
+                painter.drawLine(int(viz_x), y, int(viz_w), y)
 
     def _draw_cursor(self):
         """
@@ -1055,13 +1055,13 @@ class TraceBar(QtWidgets.QWidget):
         draw_reader_cursor = bool(cursor_y != INVALID_IDX)
 
         if self.cells_visible:
-            cell_y = cursor_y + self._cell_border
-            cell_body_height = self._cell_height - self._cell_border
-            cursor_y += self._cell_height/2
+            cell_y = int(cursor_y + self._cell_border)
+            cell_body_height = int(self._cell_height - self._cell_border)
+            cursor_y = int(cursor_y + self._cell_height/2)
 
         # the top point of the triangle
         top_x = 0
-        top_y = cursor_y - (size // 2) # vertically align the triangle so the tip matches the cross section
+        top_y = int(cursor_y - (size // 2)) # vertically align the triangle so the tip matches the cross section
 
         # bottom point of the triangle
         bottom_x = top_x
@@ -1090,13 +1090,13 @@ class TraceBar(QtWidgets.QWidget):
             self._painter_cursor.setBrush(self.pctx.palette.trace_cursor_highlight)
 
             if draw_reader_cursor:
-                self._painter_cursor.drawRect(viz_x, cell_y, viz_w, cell_body_height)
+                self._painter_cursor.drawRect(int(viz_x), cell_y, int(viz_w), cell_body_height)
 
             # cursor hover highlighting an event
             if self._hovered_idx != INVALID_IDX:
-                hovered_y = self._idx2pos(self._hovered_idx)
-                hovered_cell_y = hovered_y + self._cell_border
-                self._painter_cursor.drawRect(viz_x, hovered_cell_y, viz_w, cell_body_height)
+                hovered_y = int(self._idx2pos(self._hovered_idx))
+                hovered_cell_y = int(hovered_y + self._cell_border)
+                self._painter_cursor.drawRect(int(viz_x), hovered_cell_y, int(viz_w), cell_body_height)
 
         # draw the user cursor in dense/landscape mode
         else:
@@ -1104,12 +1104,12 @@ class TraceBar(QtWidgets.QWidget):
 
             # normal fixed / current reader cursor
             if draw_reader_cursor:
-                self._painter_cursor.drawLine(viz_x, cursor_y, viz_w, cursor_y)
+                self._painter_cursor.drawLine(int(viz_x), cursor_y, int(viz_w), cursor_y)
 
             # cursor hover highlighting an event
             if self._hovered_idx != INVALID_IDX:
-                hovered_y = self._idx2pos(self._hovered_idx)
-                self._painter_cursor.drawLine(viz_x, hovered_y, viz_w, hovered_y)
+                hovered_y = int(self._idx2pos(self._hovered_idx))
+                self._painter_cursor.drawLine(int(viz_x), hovered_y, int(viz_w), hovered_y)
 
         if not draw_reader_cursor:
             return
@@ -1167,9 +1167,9 @@ class TraceBar(QtWidgets.QWidget):
         viz_x, viz_y = self.viz_pos
 
         x = viz_x
-        y = start_y
-        w = viz_w
-        h = end_y - start_y
+        y = int(start_y)
+        w = int(viz_w)
+        h = int(end_y - start_y)
 
         # draw the screen door / selection rect
         self._painter_selection.drawRect(x, y, w, h)
@@ -1293,7 +1293,7 @@ class TraceView(QtWidgets.QWidget):
         """
         Handle a right click event (populate/show context menu).
         """
-        action = self._menu.exec_(self.mapToGlobal(position))
+        action = self._menu.exec(self.mapToGlobal(position))
         if action == self._action_load:
             self.pctx.interactive_load_trace(True)
         elif action == self._action_close:
